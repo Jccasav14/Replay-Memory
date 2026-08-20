@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "REPLAY",
+    "slug": "replay-memory",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0d14"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.replay.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "REPLAY requires camera access to capture autobiographical memory moments.",
+        "NSPhotoLibraryUsageDescription": "REPLAY requires photo library access to organize and relate your memories.",
+        "NSLocationWhenInUseUsageDescription": "REPLAY uses your location to record memory coordinates and geofences.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "REPLAY uses background location to log entries to your Life Graph places."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0a0d14"
+      },
+      "package": "com.replay.app",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "RECEIVE_BOOT_COMPLETED"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow REPLAY to take photos for your memories."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow REPLAY to detect when you visit Life Graph places."
+        }
+      ]
+    ]
+  }
+}
