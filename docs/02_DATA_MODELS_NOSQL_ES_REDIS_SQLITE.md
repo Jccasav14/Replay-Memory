@@ -1,32 +1,31 @@
-# REPLAY: MODELOS DE DATOS Y ESTRATEGIAS DE PERSISTENCIA
+# REPLAY: DATA MODELS AND PERSISTENCE STRATEGIES
 
-## 1. Justificación de MongoDB como Fuente Principal de Datos
-Los recuerdos humanos no se adaptan a un esquema tabular rígido con columnas fijas. Un recuerdo puede ser una simple nota de texto, una fotografía con 5 personas etiquetadas y 20 tags de visión computacional, un documento PDF con texto extraído, un evento geográfico con coordenadas y polígonos, o una combinación polimórfica de todos los anteriores.
+## 1. Technical Justification of MongoDB as Primary Store
+Human memories cannot be constrained by rigid, homogeneous tabular schemas. A memory entry may be a simple textual thought, a photograph tagged with five individuals and twenty computer vision labels, a PDF document with extracted OCR text, a geospatial location event, or an evolving polymorphic combination of these elements.
 
-MongoDB permite:
-1. **Modelado Documental Polimórfico**: Alojar tipos heterogéneos de `Memory` (`PHOTO`, `NOTE`, `DOCUMENT`, `LOCATION_EVENT`, etc.) en una sola colección optimizada.
-2. **Estructuras Embebidas vs Referenciadas**: Embeber metadatos inmutables o fuertemente acoplados (análisis de IA, coordenadas, metadatos EXIF) y referenciar entidades reutilizables con ciclo de vida independiente (`Person`, `Location`, `Object`).
-3. **Alto Rendimiento en Consultas Temporales y Geoespaciales**: Índices compuestos `{ userId: 1, occurredAt: -1 }` y geoespaciales `2dsphere`.
-
----
-
-## 2. Estrategia de Diseño: Embebido vs Referenciado
-* **Documentos Embebidos (Embedded Documents)**:
-  * Metadatos de análisis de IA (`ai_analysis` dentro de `Memory`).
-  * Metadatos de archivos multimedia (`media_items` dentro de `Memory`).
-  * Datos geoespaciales puntuales (`location_point` con coordenadas exactas del recuerdo).
-  * Snapshots históricos (nombre de la persona en el momento en que se tomó la foto).
-* **Referencias por ID (`@DBRef` o `ObjectId`)**:
-  * `Person`: Una persona existe independientemente de si aparece en 1 o 100 recuerdos.
-  * `Location` (Lugares conocidos): "Casa", "Universidad", "Oficina" tienen estadísticas agregadas.
-  * `Object`: "Mi Laptop", "Mi Auto", "Pasaporte" tienen su propia línea de tiempo histórica.
-  * `User`: Propietario de la información (Tenant isolation).
+MongoDB provides:
+1. **Polymorphic Document Modeling**: Storing heterogeneous memory types (`PHOTO`, `NOTE`, `DOCUMENT`, `LOCATION_EVENT`, etc.) within a unified collection.
+2. **Embedded vs Referenced Strategies**: Embedding immutable or tightly coupled metadata (AI vision tags, EXIF, coordinate snapshots) while referencing independently managed entities (`Person`, `Location`, `Object`).
+3. **High-Throughput Temporal and Geospatial Queries**: Compound indices on `{ userId: 1, occurredAt: -1 }` and `2dsphere` geospatial indices.
 
 ---
 
-## 3. Esquemas de MongoDB (BSON / JSON Schema)
+## 2. Design Strategy: Embedded Documents vs Logical References
+* **Embedded Documents**:
+  * AI analysis results (`aiAnalysis` inside `Memory`).
+  * Media item metadata (`media` array inside `Memory`).
+  * Point coordinates and address snapshots.
+* **Referenced Entities (ObjectIds)**:
+  * `Person`: People have identity and metrics across multiple memories.
+  * `Location`: Frequently visited places (Home, Work, Campus) maintain aggregate statistics.
+  * `Object`: Valuables and possessions possess an independent timeline.
+  * `User`: Multi-tenant data partition.
 
-### 3.1. Colección `users`
+---
+
+## 3. MongoDB Schemas (BSON / JSON Schema)
+
+### 3.1. Collection: `users`
 ```json
 {
   "_id": { "$type": "objectId" },
@@ -44,12 +43,12 @@ MongoDB permite:
   "updatedAt": { "$type": "date" }
 }
 ```
-**Índices:**
+**Indices:**
 * `db.users.createIndex({ "email": 1 }, { unique: true })`
 
 ---
 
-### 3.2. Colección `memories` (Colección Central)
+### 3.2. Collection: `memories` (Core Collection)
 ```json
 {
   "_id": { "$type": "objectId" },
@@ -110,7 +109,7 @@ MongoDB permite:
   "updatedAt": { "$type": "date" }
 }
 ```
-**Índices:**
+**Indices:**
 * `db.memories.createIndex({ "userId": 1, "occurredAt": -1 })`
 * `db.memories.createIndex({ "userId": 1, "isDeleted": 1, "processingStatus": 1 })`
 * `db.memories.createIndex({ "location.geoPoint": "2dsphere" })`
@@ -120,21 +119,15 @@ MongoDB permite:
 
 ---
 
-### 3.3. Colecciones de Entidades del Life Graph (`people`, `locations`, `objects`)
-* **`people`**:
-  * Campos: `_id`, `userId`, `name`, `relationship` (amigo, familia, colega), `avatarStoragePath`, `notes`, `firstMetDate`, `interactionCount`, `createdAt`.
-  * Índice: `{ userId: 1, name: 1 }`.
-* **`locations`**:
-  * Campos: `_id`, `userId`, `name`, `category` (HOGAR, TRABAJO, ESTUDIO, OCIO), `geoPoint`, `radiusMeters`, `visitCount`, `createdAt`.
-  * Índice: `{ "geoPoint": "2dsphere" }`, `{ userId: 1, name: 1 }`.
-* **`objects`**:
-  * Campos: `_id`, `userId`, `name`, `category` (DISPOSITIVO, VEHICULO, HERRAMIENTA, JOYERIA), `serialNumber`, `acquisitionDate`, `photoStoragePath`, `createdAt`.
-  * Índice: `{ userId: 1, name: 1 }`.
+### 3.3. Life Graph Collections (`people`, `locations`, `objects`)
+* **`people`**: Fields `_id`, `userId`, `name`, `relationship`, `avatarStoragePath`, `notes`, `firstMetDate`, `interactionCount`, `createdAt`.
+* **`locations`**: Fields `_id`, `userId`, `name`, `category`, `geoPoint`, `radiusMeters`, `visitCount`, `createdAt`.
+* **`objects`**: Fields `_id`, `userId`, `name`, `category`, `serialNumber`, `acquisitionDate`, `photoStoragePath`, `createdAt`.
 
 ---
 
-## 4. Mapeo de Elasticsearch (`replay_memories`)
-Elasticsearch actúa como **índice de búsqueda derivado** y soporte para **KNN Vector Search**.
+## 4. Elasticsearch Mapping (`replay_memories`)
+Elasticsearch serves as a **derived search index** providing **BM25 full-text** and **KNN Dense Vector Search**.
 
 ```json
 {
@@ -145,19 +138,13 @@ Elasticsearch actúa como **índice de búsqueda derivado** y soporte para **KNN
       "type": { "type": "keyword" },
       "title": { 
         "type": "text",
-        "analyzer": "spanish",
+        "analyzer": "standard",
         "fields": {
           "suggest": { "type": "search_as_you_type" }
         }
       },
-      "description": { 
-        "type": "text", 
-        "analyzer": "spanish" 
-      },
-      "aiSummary": { 
-        "type": "text", 
-        "analyzer": "spanish" 
-      },
+      "description": { "type": "text", "analyzer": "standard" },
+      "aiSummary": { "type": "text", "analyzer": "standard" },
       "tags": { "type": "keyword" },
       "peopleNames": { 
         "type": "text",
@@ -186,23 +173,21 @@ Elasticsearch actúa como **índice de búsqueda derivado** y soporte para **KNN
 
 ---
 
-## 5. Taxonomía de Claves en Redis
-Redis almacena exclusivamente datos efímeros, caché volátil, contadores y tokens:
+## 5. Redis Key Taxonomy and TTL Policy
 
-| Patrón de Clave | Tipo Redis | TTL | Propósito |
+| Key Pattern | Data Structure | TTL | Responsibility |
 | :--- | :--- | :--- | :--- |
-| `auth:token:blacklist:{jti}` | String | Expiración del JWT | Revocación inmediata de tokens |
-| `auth:refresh:{userId}:{deviceId}` | String | 7 días | Validación de Refresh Token seguro |
-| `ratelimit:{ip}:{endpoint}` | String (INCR) | 1 minuto | Protección contra abuso / DoS |
-| `cache:timeline:{userId}:{year}:{month}` | String (JSON) | 1 hora | Caché de Timeline mensual |
-| `cache:lifegraph:stats:{userId}` | String (JSON) | 30 minutos | Conteo de nodos y aristas del Life Graph |
-| `job:queue:ai_processing` | List / Stream | Persistente hasta ACK | Cola de procesamiento asíncrono |
-| `lock:sync:{userId}` | String (SET NX) | 30 segundos | Distributed lock para evitar carreras de sync |
+| `auth:token:blacklist:{jti}` | String | JWT Expiry | Immediate revocation of invalidated tokens |
+| `auth:refresh:{userId}:{deviceId}` | String | 7 days | Refresh token validation |
+| `ratelimit:{ip}:{endpoint}` | String (INCR) | 1 minute | API rate limiting protection |
+| `cache:timeline:{userId}:{year}:{month}` | String (JSON) | 1 hour | Cached monthly timeline views |
+| `cache:lifegraph:stats:{userId}` | String (JSON) | 30 minutes | Life Graph node/edge count aggregations |
+| `job:queue:ai_processing` | List / Stream | Persistent until ACK | Asynchronous background processing queue |
+| `lock:sync:{userId}` | String (SET NX) | 30 seconds | Distributed synchronization mutex |
 
 ---
 
-## 6. Esquema Local en Mobile (Expo SQLite)
-Esquema DDL ejecutado en el dispositivo móvil:
+## 6. Mobile Local Schema (Expo SQLite DDL)
 
 ```sql
 CREATE TABLE IF NOT EXISTS local_memories (
@@ -215,7 +200,7 @@ CREATE TABLE IF NOT EXISTS local_memories (
     latitude REAL,
     longitude REAL,
     location_name TEXT,
-    tags TEXT, -- JSON Array string
+    tags TEXT,
     media_local_uri TEXT,
     sync_status TEXT CHECK(sync_status IN ('SYNCED', 'PENDING_INSERT', 'PENDING_UPDATE', 'PENDING_DELETE')) NOT NULL DEFAULT 'PENDING_INSERT',
     sync_version INTEGER DEFAULT 1,
