@@ -1,0 +1,43 @@
+server:
+  port: 8080
+  shutdown: graceful
+
+spring:
+  application:
+    name: replay-backend
+  profiles:
+    active: dev
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
+
+# Application Custom Configuration
+replay:
+  storage:
+    base-path: ./storage
+    images-dir: images
+    thumbnails-dir: thumbnails
+    documents-dir: documents
+    videos-dir: videos
+    max-file-size-bytes: 52428800 # 50MB
+  security:
+    jwt:
+      secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      expiration-ms: 86400000 # 24 Hours
+      refresh-expiration-ms: 604800000 # 7 Days
+  ai:
+    gemini:
+      api-key: ${GEMINI_API_KEY:}
+      model-text: gemini-1.5-flash
+      model-vision: gemini-1.5-flash
+      model-embedding: text-embedding-004
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always

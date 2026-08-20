@@ -1,0 +1,21 @@
+spring:
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://admin:replay_secure_password_2026@localhost:27017/replay_db?authSource=admin}
+      auto-index-creation: true
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:replay_redis_password}
+      timeout: 2000ms
+
+elasticsearch:
+  uris: ${ELASTICSEARCH_URL:http://localhost:9200}
+  index-prefix: replay
+
+logging:
+  level:
+    root: INFO
+    com.replay: DEBUG
+    org.springframework.data.mongodb: INFO
+    org.springframework.security: INFO
