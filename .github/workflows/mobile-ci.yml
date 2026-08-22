@@ -1,0 +1,36 @@
+name: Mobile Expo CI Pipeline
+
+on:
+  push:
+    branches: [ "main", "qa" ]
+    paths:
+      - "mobile/**"
+      - ".github/workflows/mobile-ci.yml"
+  pull_request:
+    branches: [ "main", "qa" ]
+    paths:
+      - "mobile/**"
+      - ".github/workflows/mobile-ci.yml"
+
+jobs:
+  validate-mobile:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: mobile/package.json
+
+      - name: Install dependencies
+        working-directory: ./mobile
+        run: npm ci || npm install
+
+      - name: Validate TypeScript
+        working-directory: ./mobile
+        run: npx tsc --noEmit
